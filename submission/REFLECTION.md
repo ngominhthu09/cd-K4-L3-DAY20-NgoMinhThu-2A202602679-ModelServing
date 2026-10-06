@@ -6,10 +6,10 @@
 >
 > `make verify` sẽ fail nếu còn placeholder chưa điền. Đó là cố ý.
 
-**Họ Tên:** _<Họ Tên>_
-**MSSV:** _<MSSV>_
-**Cohort:** _<A20-K1 / A20-K2 / ...>_
-**Ngày submit:** _<YYYY-MM-DD>_
+**Họ Tên:** Ngô Minh Thu
+**MSSV:** 2A202602679
+**Cohort:** AI20K Cohort 4
+**Ngày submit:** 2026-10-06
 
 ---
 
@@ -17,23 +17,26 @@
 
 > Từ `make probe`. Paste output hoặc điền tay.
 
-- **OS:** _<macOS 14 / Windows 11 / Ubuntu 24.04 / ...>_
-- **CPU:** _<Apple M2 / Intel i7-12700H / AMD Ryzen 7 5800H>_
-- **Cores:** _<physical / logical>_
-- **CPU extensions:** _<AVX2 / AVX-512 / NEON / —>_
-- **RAM:** _<GB>_
-- **Accelerator:** _<NVIDIA RTX 4060 / Apple Metal / Vulkan / CPU only>_
-- **llama.cpp asset đã tải:** _<vd: llama-b10488-bin-macos-arm64.tar.gz>_
-- **Model đã dùng:** _<Gemma 4 E2B / Qwen3.5 0.8B>_ (`LAB_MODEL=`_<gemma4-e2b / qwen35-0.8b>_)
-- **Quantization:** _<primary>_ + _<compare>_ (từ `models/active.json`)
+- **OS:** Windows 11 (AMD64)
+- **CPU:** Intel Core i5-10400H @ 2.60 GHz
+- **Cores:** 4 physical / 8 logical
+- **CPU extensions:** AVX2
+- **RAM:** 15.6 GB
+- **Accelerator:** NVIDIA Quadro P620 4 GB via CUDA (`ngl=99`); Vulkan also detected
+- **llama.cpp asset đã tải:** `llama-b10488-bin-win-cuda-12.4-x64.zip`
+- **Model đã dùng:** Qwen3.5 0.8B (`LAB_MODEL=qwen35-0.8b`)
+- **Quantization:** Q4_K_M (primary) + UD-Q2_K_XL (compare)
 
-**Chạy ở đâu:** _<laptop của tôi / Colab / Kaggle>_
+**Chạy ở đâu:** laptop của tôi
 _(Nếu dùng cloud fallback: nói rõ vì sao — RAM < 8 GB, setup fail, v.v. Không mất điểm.)_
 
 **Setup story** (≤ 80 chữ): điều gì cần thay đổi để lab chạy trên máy bạn? Có bước
 nào fail rồi phải workaround không?
 
-_Answer here._
+Tôi chọn Qwen3.5 0.8B để giảm thời gian tải và chạy thí nghiệm dù máy đủ RAM cho
+Gemma. `lab.ps1` ban đầu lỗi parse vì Windows PowerShell 5.1 đọc sai UTF-8 không BOM;
+tôi lưu lại script dưới UTF-8 có BOM rồi setup thành công. CUDA offload được tự động
+bật trên Quadro P620.
 
 ---
 
@@ -43,14 +46,16 @@ _Answer here._
 
 | Quantization | Size (GB) | Load (ms) | TTFT P50/P95 (ms) | TPOT P50/P95 (ms) | E2E P50/P95/P99 (ms) | Decode (tok/s) |
 |---|--:|--:|--:|--:|--:|--:|
-| UD-Q4_K_XL | | | | | | |
-| UD-Q2_K_XL | | | | | | |
+| Q4_K_M | 0.50 | 44734 | 525 / 555 | 30.2 / 30.3 | 2420 / 2459 / 2459 | 33.1 |
+| UD-Q2_K_XL | 0.39 | 4556 | 615 / 860 | 34.7 / 37.5 | 2784 / 3094 / 3094 | 28.8 |
 
 **Quan sát** (≤ 60 chữ): 2-bit nhanh hơn bao nhiêu, và **có đáng không**? Bạn đã thử
 hỏi cùng một câu trên cả hai (`make serve` vs `.venv/bin/python labs/02-serve/serve.py --compare`)
 chưa? Chất lượng khác nhau thế nào?
 
-_Answer here._
+Q2 nhỏ hơn 22% nhưng decode chậm hơn Q4 khoảng 13%; TTFT P50 cao hơn 17% và E2E
+P50 cao hơn 15%. Với cùng prompt, Q4 ngắn gọn hơn; cả hai chưa định nghĩa hoàn toàn
+đúng, nhưng Q2 vòng vo và lẫn Goodput@SLO với SLA. Vì vậy Q2 không đáng dùng trên máy này.
 
 ---
 
@@ -60,22 +65,26 @@ _Answer here._
 
 | Users | RPS | P50 (ms) | P95 (ms) | P99 (ms) | Eff. concurrency | Failures |
 |--:|--:|--:|--:|--:|--:|--:|
-| 10 | | | | | | |
-| 50 | | | | | | |
+| 10 | 0.92 | 8900 | 12000 | 14000 | 8.4 | 0.0% |
+| 50 | 1.03 | 27000 | 49000 | 51000 | 28.9 | 0.0% |
 
-- **Offered load tăng 5×, throughput thực tăng:** _<X.XX>×_
-- **P95 tăng:** _<X.XX>×_
-- **Effective concurrency ở 50 users:** _<số>_ so với `--parallel` = _<số>_ slots
+- **Offered load tăng 5×, throughput thực tăng:** 1.12×
+- **P95 tăng:** 4.08×
+- **Effective concurrency ở 50 users:** 28.9 so với `--parallel` = 4 slots
 
 **Peak `llamacpp:n_busy_slots_per_decode`** (từ `make metrics` khi `make load-50` đang
-chạy): _<số>_ / _<slots>_ slots
+chạy): 3.91 / 4 slots
 
 **Saturation reading** (≤ 80 chữ): server của bạn bão hoà ở đâu, và **bằng chứng nào**
 thuyết phục bạn? Nếu P95 tăng nhanh hơn RPS thì phần latency thêm đó là queue time hay
 compute time — bạn biết bằng cách nào? Nếu bạn phải nâng goodput@SLO, bạn sẽ đổi knob
 nào **trước**, và vì sao knob đó?
 
-_Answer here._
+Server đã có queue ở 10 users vì effective concurrency 8.4 vượt 4 slots, và bão hòa
+nặng ở 50 users: throughput chỉ tăng 1.12× trong khi P95 tăng 4.08×. Peak 3.91/4 slots
+và 46 deferred requests chứng minh latency tăng chủ yếu là queue time. Với SLO P95 ≤
+15 giây, run 10 users đạt nhưng run 50 users không đạt. Tôi sẽ thử `--parallel 8`
+trước vì bốn decode slots là giới hạn trực tiếp.
 
 ---
 
@@ -85,23 +94,25 @@ _Answer here._
 
 | Day | Piece | Real hay stub? |
 |---|---|---|
-| N16 Cloud/IaC | | |
-| N17 Data pipeline | | |
-| N18 Lakehouse | | |
-| N19 Vector + features | | |
+| N16 Cloud/IaC | localhost only | stub |
+| N17 Data pipeline | in-memory list | stub |
+| N18 Lakehouse | `TOY_DOCS` dictionary | stub |
+| N19 Vector + features | keyword overlap, no embeddings/index | stub |
 | N20 Serving | `llama-server` | real |
 
 **Latency split** (mean của 3 query, từ output của `pipeline.py`):
 
-- embed: _<ms>_
-- retrieve: _<ms>_
-- llm: _<ms>_
-- **stage chiếm nhiều nhất:** _<stage>_ (_<%>_ của total)
+- embed: 0.0 ms
+- retrieve: 0.1 ms
+- llm: 6106.0 ms
+- **stage chiếm nhiều nhất:** LLM (gần 100% của total)
 
 **Reflection** (≤ 60 chữ): bottleneck ở đâu? Có khớp với kỳ vọng của bạn không? Nếu
 phải giảm latency của pipeline này 2×, bạn sẽ tấn công vào đâu?
 
-_Answer here._
+LLM là bottleneck đúng như kỳ vọng vì keyword retrieval trên corpus nhỏ chỉ tốn 0.1
+ms. Muốn giảm latency pipeline 2×, tôi sẽ tối ưu LLM decode bằng cách giảm output-token
+budget hoặc dùng serving hardware nhanh hơn; tối ưu retrieval gần như không ảnh hưởng tổng thời gian.
 
 ---
 
@@ -111,12 +122,12 @@ _Answer here._
 > một before/after thật (`benchmarks/01-tuning-tg128.md`). Đổi quantization,
 > `LAB_N_CTX`, hay `--parallel` rồi đo lại cũng được.
 
-**Change:** _<vd: hạ -t từ 16 xuống 8; vd: đổi sang UD-Q2_K_XL; vd: --parallel 4 → 8>_
+**Change:** đổi quantization từ UD-Q2_K_XL sang Q4_K_M
 
 ```
-before:  <số + đơn vị>
-after:   <số + đơn vị>
-speedup: <X.Y>×
+before:  28.8 tok/s (UD-Q2_K_XL)
+after:   33.1 tok/s (Q4_K_M)
+speedup: 1.15×
 ```
 
 **Tại sao nó work** (1–2 đoạn — đây là phần grader đọc kỹ nhất):
@@ -126,7 +137,15 @@ memory bandwidth? vector width? cache residency? scheduling? queueing? Nếu k�
 **khác** với kỳ vọng từ deck — nói rõ, và giải thích vì sao. Grader thưởng điểm cho
 lập luận đúng về một kết quả bất ngờ, hơn là một con số đẹp không được giải thích._
 
-_Answer here._
+Kỳ vọng thông thường là Q2 nhỏ hơn sẽ decode nhanh hơn nhờ đọc ít byte từ bộ nhớ.
+Nhưng Q4 chỉ 0.50 GB nên đã nằm trọn trong 4 GB VRAM của Quadro P620; giảm thêm 0.11
+GB không thay đổi model residency hay loại bỏ PCIe transfer trong mỗi bước decode.
+
+Trên CUDA backend này, chi phí unpack/dequantization của Q2 và mức tối ưu kernel cho
+định dạng đó lớn hơn lợi ích bandwidth. Kết quả là TPOT P50 tăng từ 30.2 lên 34.7 ms
+và throughput giảm từ 33.1 xuống 28.8 tok/s. Thread sweep cũng cho thấy 4–16 CPU
+threads gần như phẳng, củng cố rằng thêm tài nguyên CPU không giải quyết đường chạy
+GPU/dequantization này. Vì vậy Q4 là lựa chọn nhanh hơn và cũng trả lời tốt hơn.
 
 ---
 
@@ -135,19 +154,19 @@ _Answer here._
 > Bỏ trống nếu không làm. Xem `docs/bonus/README.md`. Đừng làm hết — **một** finding sâu
 > ăn điểm hơn năm bảng nông.
 
-**Đã làm:** _<B1 build-compare / B2 sweep nào / B4 challenge nào / B5 lựa chọn nào>_
+**Đã làm:** Không làm bonus.
 
 **Numbers:**
 
 ```
-before:  <số>
-after:   <số>
-speedup: <X.Y>×
+before:  N/A
+after:   N/A
+speedup: N/A
 ```
 
 **Điều này nói lên gì mà deck chưa nói:**
 
-_(để trống nếu bạn không làm phần này)_
+Không áp dụng.
 
 ---
 
@@ -155,7 +174,8 @@ _(để trống nếu bạn không làm phần này)_
 
 _(1–2 câu. Không bắt buộc, nhưng grader đọc hết.)_
 
-_(để trống nếu bạn không làm phần này)_
+Q2 nhỏ hơn nhưng lại chậm hơn Q4, còn tăng từ 4 lên 16 CPU threads gần như không cải
+thiện throughput vì phần lớn tính toán đã được offload sang GPU.
 
 ---
 
@@ -185,4 +205,6 @@ xem được → 0 điểm.
 
 ## 9. Khai báo sử dụng AI  *(xem `docs/RULES.md` §3)*
 
-_(Công cụ nào, dùng vào việc gì. Ghi "Không dùng" nếu không dùng.)_
+Tôi sử dụng OpenAI Codex để đọc hướng dẫn lab, chẩn đoán lỗi encoding PowerShell,
+giải thích số liệu benchmark/load test và hỗ trợ biên tập các phần nhận xét trong báo
+cáo. Toàn bộ số liệu đo được tạo bằng các script của lab trên máy của tôi.
